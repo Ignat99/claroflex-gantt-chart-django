@@ -5,9 +5,11 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.http import HttpResponse, JsonResponse
 from django.template.loader import render_to_string
+from rest_framework.renderers import TemplateHTMLRenderer, JSONRenderer
+from .renderers import CommentHtmlRenderer
 
-from projects.models import Project, ProjectTask
-from projects.serializers import ProjectSerializer, ProjectTaskSerializer
+from projects.models import Project, ProjectTask, ProjectComment
+from projects.serializers import ProjectSerializer, ProjectTaskSerializer, ProjectCommentSerializer
 from abc import ABC, abstractmethod
 
 
@@ -80,7 +82,8 @@ class MemberClosedProjectListView(ProjectListViewCreator):
         return context
 
 
-class ProjectDetailView(DetailView):
+class ProjectDetailView(LoginRequiredMixin, DetailView):
+    login_url = '/login/'
     model = Project
 
 
@@ -122,4 +125,23 @@ class ProjectTaskViewSet(generics.UpdateAPIView, viewsets.GenericViewSet):
     def open(self, *args, **kwargs):
         obj = self.get_object()
         obj.open()
+        return Response({})
+
+
+class ProjectCommentViewSet(viewsets.ModelViewSet):
+    serializer_class = ProjectCommentSerializer
+    queryset = ProjectComment.objects.all()
+    renderer_classes = [CommentHtmlRenderer, JSONRenderer]
+    template_name = 'projects/includes/comment.html'
+
+    @action(methods=['POST'], detail=True, url_path='remove')
+    def remove(self, *args, **kwargs):
+        obj = self.get_object()
+        obj.remove()
+        return Response({})
+
+    @action(methods=['POST'], detail=True, url_path='restore')
+    def restore(self, *args, **kwargs):
+        obj = self.get_object()
+        obj.restore()
         return Response({})
